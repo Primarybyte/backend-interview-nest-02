@@ -1,0 +1,82 @@
+version: "3.7"
+
+services:
+  npm:
+    image: node:18.15.0
+    container_name: primarybyte-npm
+    entrypoint: npm
+    environment:
+      MYSQL_HOST: "mysql"
+      MYSQL_PORT: "3306"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    working_dir: /opt/primarybyte
+    volumes:
+      - .:/opt/primarybyte
+    profiles:
+      - npm
+
+  app:
+    image: node:18.15.0
+    container_name: primarybyte-app
+    command: npm run start:dev
+    environment:
+      APP_HOST: "0.0.0.0"
+      MYSQL_HOST: "mysql"
+      MYSQL_PORT: "3306"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    ports:
+      - ${EXTERNAL_APP_PORT}:${APP_PORT}
+    working_dir: /opt/primarybyte
+    volumes:
+      - .:/opt/primarybyte
+    profiles:
+      - app
+    depends_on:
+      - mysql
+      - redis
+
+  app-debug:
+    image: node:18.15.0
+    container_name: primarybyte-app
+    command: npm run start:debug
+    environment:
+      APP_HOST: "0.0.0.0"
+      MYSQL_HOST: "mysql"
+      MYSQL_PORT: "3306"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+    ports:
+      - ${EXTERNAL_APP_PORT}:${APP_PORT}
+      - ${EXTERNAL_APP_DEBUG_PORT}:9229
+    working_dir: /opt/primarybyte
+    volumes:
+      - .:/opt/primarybyte
+    profiles:
+      - app-debug
+    depends_on:
+      - mysql
+      - redis
+
+  mysql:
+    image: mysql:8.0.32
+    container_name: primarybyte-mysql
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - ./test/init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql
+    ports:
+      - ${EXTERNAL_MYSQL_PORT}:3306
+    profiles:
+      - infra
+
+  redis:
+    image: redis:7.0.10
+    container_name: primarybyte-redis
+    ports:
+      - ${EXTERNAL_REDIS_PORT}:6379
+    profiles:
+      - infra
